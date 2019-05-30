@@ -131,7 +131,7 @@ class KafkaClient(object):
             raise ImportError('use_greenlets can only be used when gevent is installed.')
         self._handler = GEventHandler() if use_greenlets else ThreadingHandler()
         self.cluster = Cluster(
-            hosts,
+            hosts if not ':' in hosts else '{}:{}'.format(hosts, '9092'),
             self._handler,
             socket_timeout_ms=self._socket_timeout_ms,
             offsets_channel_socket_timeout_ms=self._offsets_channel_socket_timeout_ms,
@@ -148,7 +148,7 @@ class KafkaClient(object):
             module=self.__class__.__module__,
             name=self.__class__.__name__,
             id_=hex(id(self)),
-            hosts=self._seed_hosts,
+            hosts=self.__getHost(self._seed_hosts),
         )
 
     def update_cluster(self):
@@ -158,3 +158,23 @@ class KafkaClient(object):
         with current metadata from the cluster.
         """
         self.cluster.update()
+
+    def __getHost(self, host):
+        """
+        Private method for setup default port
+        :param host:
+        :return: string with hosts 'host:port,host:port.....'
+        """
+        hosts = host.split(',')
+        resp = ''
+
+        for item in range(len(hosts)):
+            if ':' in item:
+                resp += hosts[item]
+            else:
+                resp += '{}:{}'.format(hosts[item], '9092')
+
+            if len(hosts) > item-1:
+                resp += ','
+
+        return resp
